@@ -39,7 +39,7 @@ namespace boost { namespace iostreams { namespace detail {
 inline BOOST_IOSTREAMS_FAILURE system_failure(const char* msg)
 {
     std::string result;
-#ifdef BOOST_IOSTREAMS_WINDOWS
+#if defined(BOOST_IOSTREAMS_WINDOWS) && (WINAPI_FAMILY != WINAPI_FAMILY_APP)
     DWORD err;
     LPVOID lpMsgBuf;
     if ( (err = ::GetLastError()) != NO_ERROR &&

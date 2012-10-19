@@ -154,6 +154,7 @@ void file_descriptor_impl::open(const detail::path& p, BOOST_IOS::openmode mode)
         boost::throw_exception(BOOST_IOSTREAMS_FAILURE("bad open mode"));
     }
 
+#if defined(BOOST_IOSTREAMS_WINDOWS) && (WINAPI_FAMILY != WINAPI_FAMILY_APP)
     HANDLE handle = p.is_wide() ?
         ::CreateFileW( p.c_wstr(),
                        dwDesiredAccess,
@@ -169,6 +170,15 @@ void file_descriptor_impl::open(const detail::path& p, BOOST_IOS::openmode mode)
                        dwCreationDisposition,
                        FILE_ATTRIBUTE_NORMAL,
                        NULL );                 // hTemplateFile
+#else // #if defined(BOOST_IOSTREAMS_WINDOWS) && (WINAPI_FAMILY != WINAPI_FAMILY_APP)
+    _CREATEFILE2_EXTENDED_PARAMETERS params;
+	params.dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
+    HANDLE handle =  ::CreateFile2( p.c_wstr(),
+                                    dwDesiredAccess,
+                                    FILE_SHARE_READ | FILE_SHARE_WRITE,
+									dwCreationDisposition,
+									&params );
+#endif // #if defined(BOOST_IOSTREAMS_WINDOWS) && (WINAPI_FAMILY != WINAPI_FAMILY_APP)
     if (handle != INVALID_HANDLE_VALUE) {
         handle_ = handle;
         flags_ = close_always;
@@ -301,6 +311,7 @@ std::streampos file_descriptor_impl::seek
     (stream_offset off, BOOST_IOS::seekdir way)
 {
 #ifdef BOOST_IOSTREAMS_WINDOWS
+#if defined(BOOST_IOSTREAMS_WINDOWS) && (WINAPI_FAMILY != WINAPI_FAMILY_APP)
     LONG lDistanceToMove = static_cast<LONG>(off & 0xffffffff);
     LONG lDistanceToMoveHigh = static_cast<LONG>(off >> 32);
     DWORD dwResultLow =
@@ -321,6 +332,26 @@ std::streampos file_descriptor_impl::seek
                   (stream_offset(lDistanceToMoveHigh) << 32) + dwResultLow
               );
     }
+#else // #if defined(BOOST_IOSTREAMS_WINDOWS) && (WINAPI_FAMILY != WINAPI_FAMILY_APP)
+	LARGE_INTEGER liDistanceToMove, liResult;
+	liDistanceToMove.QuadPart = off;
+    BOOL success =
+        ::SetFilePointerEx( handle_,
+                            liDistanceToMove,
+							&liResult,
+                            way == BOOST_IOS::beg ?
+                                FILE_BEGIN :
+                                way == BOOST_IOS::cur ?
+                                  FILE_CURRENT :
+                                  FILE_END );
+    if ( success != 0 &&
+         ::GetLastError() != NO_ERROR )
+    {
+        boost::throw_exception(system_failure("failed seeking"));
+    } else {
+       return offset_to_position( liResult.QuadPart );
+    }
+#endif // #if defined(BOOST_IOSTREAMS_WINDOWS) && (WINAPI_FAMILY != WINAPI_FAMILY_APP)
 #else // #ifdef BOOST_IOSTREAMS_WINDOWS
     if ( off > integer_traits<BOOST_IOSTREAMS_FD_OFFSET>::const_max ||
          off < integer_traits<BOOST_IOSTREAMS_FD_OFFSET>::const_min )

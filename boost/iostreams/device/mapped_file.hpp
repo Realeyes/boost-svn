@@ -7,6 +7,8 @@
 #ifndef BOOST_IOSTREAMS_MAPPED_FILE_HPP_INCLUDED
 #define BOOST_IOSTREAMS_MAPPED_FILE_HPP_INCLUDED
 
+#if defined(WIN32) && (WINAPI_FAMILY != WINAPI_FAMILY_APP)
+
 #if defined(_MSC_VER) && (_MSC_VER >= 1020)
 # pragma once
 #endif
@@ -596,4 +598,5 @@ operator^=(mapped_file::mapmode& a, mapped_file::mapmode b)
 
 #include <boost/config/abi_suffix.hpp> // pops abi_suffix.hpp pragmas
 
+#endif // #if defined(WIN32) && (WINAPI_FAMILY != WINAPI_FAMILY_APP)
 #endif // #ifndef BOOST_IOSTREAMS_MAPPED_FILE_HPP_INCLUDED
